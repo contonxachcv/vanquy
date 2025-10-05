@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cơn Mưa Hoa Đăng</title>
+  <style>
+    html, body { height: 100%; margin: 0 }
+    body {
+      overflow: hidden;
+      background: radial-gradient(ellipse at top, #071428 0%, #02040a 60%, #000 100%);
+      color: #fff;
+      font-family: Inter, system-ui, Arial, sans-serif;
+      display: flex; align-items: center; justify-content: center;
+    }
+    canvas { display: block }
+    .credit {
+      position: fixed; right: 12px; bottom: 12px; color: #9fb6c9; font-size: 12px; opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+    <audio id="bgMusic" loop preload="auto">
+        <source src="nhac/nhactrungthu.mp3" type="audio/mpeg">
+        Trình duyệt của bạn không hỗ trợ audio.
+    </audio>
+    
+    <canvas id="c"></canvas>
+    
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W = canvas.width = innerWidth;
+let H = canvas.height = innerHeight;
+
+window.addEventListener('resize', () => {
+  W = canvas.width = innerWidth;
+  H = canvas.height = innerHeight;
+});
+
+
+function rand(a, b) { return a + Math.random() * (b - a) }
+function lerp(a, b, t) { return a + (b - a) * t }
+
+
+const focalLength = 1000; 
+const zMin = 0.1; 
+const zMax = 2.0; 
+class Lantern {
+  constructor() {
+    this.reset(true);
+  }
+  reset(top = false) {
+    this.size = rand(14, 42);
+    this.x = rand(-0.1 * W, 1.1 * W);
+    this.y = top ? rand(-H * 0.5, -10) : rand(-H * 0.2, -10);
+    this.z = rand(zMin, zMax); 
+    this.vx = rand(-0.3, 0.3);
+    this.vy = rand(0.2, 1.0) * (this.size / 24);
+    this.vz = rand(-0.01, 0.01); 
+    this.phase = rand(0, Math.PI * 2);
+    this.sway = rand(10, 40);
+    this.rotation = rand(-0.08, 0.08);
+    this.color = this.pickColor();
+    this.glow = rand(0.6, 1.2);
+    this.alpha = rand(0.7, 0.95);
+    this.age = 0;
+    this.maxAge = rand(60, 220);
+    this.twinkle = Math.random();
+    this.depth = rand(0.6, 1.4);
+  }
+  pickColor() {
+    const palettes = [
+      ['#ffd59e', '#ffb86b', '#ff7a45'],
+      ['#fff3b0', '#ffd166', '#ffb4a2'],
+      ['#ffe7f1', '#ffb6c1', '#ff7b9c']
+    ];
+    const p = palettes[Math.floor(rand(0, palettes.length))];
+    return p[Math.floor(rand(0, p.length))];
+  }
+  update(dt, wind) {
+    this.age += dt;
+    this.vy += 0.0005 * (this.size / 24);
+    this.x += this.vx + Math.sin(this.age * 0.02 + this.phase) * (this.sway * this.depth * 0.003) + wind * 0.6;
+    this.y += this.vy * (1 / this.depth);
+    this.z += this.vz; 
+
+    if (this.z < zMin) this.z = zMin;
+    if (this.z > zMax) this.z = zMax;
+    this.rotation += Math.sin(this.age * 0.005 + this.phase) * 0.0006;
+    this.alpha = 0.7 + 0.25 * Math.sin(this.age * 0.02 + this.phase * 3) * this.twinkle;
+
+    if (this.y - this.size * (focalLength / (focalLength + this.z)) > H + 80) {
+      this.reset(false);
+      this.x = rand(-0.1 * W, 1.1 * W);
+      this.y = -rand(10, 200);
+      this.z = rand(zMin, zMax);
+    }
+  }
+  draw(ctx, glowFactor) {
+    const scale = focalLength / (focalLength + this.z);
+    const px = this.x * scale + W / 2 * (1 - scale); // Perspective projection for x
+    const py = this.y * scale + H / 2 * (1 - scale); // Perspective projection for y
+    const scaledSize = this.size * scale;
+
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(this.rotation);
+    const gRadius = scaledSize * (2.4 + glowFactor * this.glow);
+    const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, gRadius);
+    grd.addColorStop(0, hexToRgba(this.color, 0.25 * this.alpha));
+    grd.addColorStop(0.35, hexToRgba(this.color, 0.08 * this.alpha));
+    grd.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.arc(0, 0, gRadius, 0, Math.PI * 2);
+    ctx.fill();
+    const w = scaledSize * 0.8;
+    const h = scaledSize * 1.05;
+    ctx.beginPath();
+    roundRectPath(ctx, -w / 2, -h / 2, w, h, w * 0.45);
+    ctx.fillStyle = this.color;
+    ctx.globalAlpha = this.alpha * (1 - (this.z - zMin) / (zMax - zMin)); // Fade with depth
+    ctx.fill();
+    ctx.globalAlpha = 0.18 * this.alpha;
+    for (let i = -2; i <= 2; i++) {
+      ctx.beginPath();
+      const ix = (i / 3) * w * 0.7;
+      ctx.moveTo(ix, -h / 2);
+      ctx.quadraticCurveTo(ix * 1.4, 0, ix, h / 2);
+      ctx.lineWidth = Math.max(1, scaledSize * 0.045);
+      ctx.strokeStyle = '#000000';
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    const flameY = h * 0.12;
+    const flameH = scaledSize * 0.28;
+    const flameW = scaledSize * 0.12;
+    const flameGrd = ctx.createRadialGradient(0, flameY, 0, 0, flameY, flameH);
+    flameGrd.addColorStop(0, '#fff9c8');
+    flameGrd.addColorStop(0.4, '#ffd36a');
+    flameGrd.addColorStop(1, 'rgba(255, 100, 50, 0)');
+    ctx.fillStyle = flameGrd;
+    ctx.beginPath();
+    ctx.ellipse(0, flameY, flameW, flameH, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+
+function roundRectPath(ctx, x, y, w, h, r) {
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+}
+
+function hexToRgba(hex, alpha) {
+  const h = hex.replace('#', '');
+  const bigint = parseInt(h, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+
+let lanterns = [];
+let LAST = performance.now();
+let wind = 0.6;
+let glowFactor = 0.6;
+const desiredCount = 80;
+
+function spawn(n) {
+  lanterns = [];
+  for (let i = 0; i < n; i++) lanterns.push(new Lantern());
+}
+spawn(desiredCount);
+
+function drawMoon(ctx) {
+  const moonX = W * 0.8;
+  const moonY = H * 0.15;
+  const moonRadius = Math.min(W, H) * 0.1;
+  const moonZ = zMax; // Moon is at maximum depth (farthest)
+  const scale = focalLength / (focalLength + moonZ);
+  const scaledMoonRadius = moonRadius * scale;
+
+
+  const glowRadius = scaledMoonRadius * 3;
+  const glowGrd = ctx.createRadialGradient(moonX, moonY, 0, moonX, moonY, glowRadius);
+  glowGrd.addColorStop(0, 'rgba(248, 248, 232, 0.6)');
+  glowGrd.addColorStop(0.2, 'rgba(248, 248, 232, 0.3)');
+  glowGrd.addColorStop(0.4, 'rgba(248, 248, 232, 0.25)');
+  glowGrd.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.beginPath();
+  ctx.arc(moonX, moonY, glowRadius, 0, Math.PI * 2);
+  ctx.fillStyle = glowGrd;
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(moonX, moonY, scaledMoonRadius, 0, Math.PI * 2);
+  ctx.fillStyle = '#f8f8e8';
+  ctx.fill();
+  const numCraters = Math.floor(rand(8, 12));
+  const craters = [];
+  for (let i = 0; i < numCraters; i++) {
+    const craterRadius = scaledMoonRadius * rand(0.03, 0.2);
+    const maxOffset = scaledMoonRadius - craterRadius;
+    const offsetX = rand(-maxOffset, maxOffset);
+    const offsetY = rand(-maxOffset, maxOffset);
+    const distance = Math.sqrt(offsetX * offsetX + offsetY * offsetY);
+    if (distance <= scaledMoonRadius - craterRadius) {
+      craters.push({
+        x: moonX + offsetX,
+        y: moonY + offsetY,
+        w: craterRadius * rand(0.8, 1.2),
+        h: craterRadius * rand(0.6, 1.0),
+        alpha: rand(0.1, 0.35)
+      });
+    }
+  }
+
+  craters.forEach(c => {
+    ctx.globalAlpha = c.alpha;
+    if (c.w > scaledMoonRadius * 0.12) {
+      const craterGrd = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, c.w);
+      craterGrd.addColorStop(0, '#d0d0c8');
+      craterGrd.addColorStop(1, '#b0b0a8');
+      ctx.fillStyle = craterGrd;
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+      ctx.shadowBlur = 5;
+      ctx.shadowOffsetX = 2;
+      ctx.shadowOffsetY = 2;
+    } else {
+      ctx.fillStyle = '#d0d0c8';
+      ctx.shadowBlur = 0;
+    }
+    ctx.beginPath();
+    ctx.ellipse(c.x, c.y, c.w, c.h, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+  ctx.shadowBlur = 0;
+}
+
+function update() {
+  const now = performance.now();
+  const dt = (now - LAST) * 0.06;
+  LAST = now;
+  ctx.clearRect(0, 0, W, H);
+  drawMoon(ctx);
+  lanterns.sort((a, b) => a.z - b.z); // Sort by z-depth for correct rendering order
+  for (let i = 0; i < lanterns.length; i++) {
+    lanterns[i].update(dt, wind);
+  }
+  for (let i = 0; i < lanterns.length; i++) {
+    lanterns[i].draw(ctx, glowFactor);
+  }
+  for (let i = 0; i < 6; i++) {
+    ctx.globalAlpha = 0.06;
+    const sx = (now * 0.0001 * i * 13) % W;
+    ctx.beginPath();
+    ctx.arc(sx, (i / W) * H + Math.sin(now * 0.0003 * i) * 80, 2 + (i % 3), 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  requestAnimationFrame(update);
+}
+requestAnimationFrame(update);
+let mouse = { x: 0, y: 0, down: false };
+canvas.addEventListener('pointerdown', (e) => { mouse.down = true; mouse.x = e.clientX; mouse.y = e.clientY });
+canvas.addEventListener('pointerup', () => { mouse.down = false });
+canvas.addEventListener('pointermove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY });
+
+function applyGust() {
+  if (!mouse.down) return;
+  for (let i = 0; i < lanterns.length; i++) {
+    const L = lanterns[i];
+    const scale = focalLength / (focalLength + L.z);
+    const px = L.x * scale + W / 2 * (1 - scale);
+    const py = L.y * scale + H / 2 * (1 - scale);
+    const dx = px - mouse.x;
+    const dy = py - mouse.y;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    if (d < 220) {
+      const f = (1 - d / 220);
+      L.vx += (dx > 0 ? 0.3 : -0.3) * f * (Math.random() * 1.6);
+      L.vy -= 0.03 * f;
+      L.vz += rand(-0.01, 0.01) * f; 
+    }
+  }
+}
+setInterval(applyGust, 40);
+
+
+const audio = document.getElementById('bgMusic');
+let musicPlayed = false;
+canvas.addEventListener('click', () => {
+  if (!musicPlayed) {
+    audio.play().then(() => {
+      musicPlayed = true;
+      console.log('Nhạc đã phát!');
+    }).catch(err => {
+      console.error('Lỗi phát nhạc:', err);
+    });
+  }
+});
+
+console.log('3D Lantern rain ready — open this file in a browser. Drag mouse to create gusts. Click vào màn hình để bật nhạc.');
+</script>
+</body>
+</html>

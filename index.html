@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Lồng Đèn Kỳ Lân</title>
+  <style>
+    body {
+      margin:0;
+      height:100vh;
+      background: radial-gradient(circle at 30% 20%, #1b1b2f, #0d0d1a 80%);
+      overflow:hidden;
+      perspective: 1000px;
+      -webkit-perspective: 1000px;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+    .star {
+      position:absolute;
+      width:2px;
+      height:2px;
+      background:white;
+      border-radius:50%;
+      opacity:0.8;
+      animation: twinkle 2s infinite alternate;
+      pointer-events:none;
+    }
+    @keyframes twinkle {
+      from { opacity:0.2; transform:scale(0.8); }
+      to   { opacity:1; transform:scale(1.2); }
+    }
+    .firefly {
+      position:absolute;
+      width:6px;
+      height:6px;
+      background: radial-gradient(circle, #ffec85 30%, rgba(255,255,255,0) 70%);
+      border-radius:50%;
+      opacity:0.8;
+      animation: fly 10s linear infinite;
+      pointer-events:none;
+    }
+    @keyframes fly {
+      0%   { transform: translate(0,0); }
+      25%  { transform: translate(100px,60px); }
+      50%  { transform: translate(-50px,120px); }
+      75%  { transform: translate(-120px,-60px); }
+      100% { transform: translate(0,0); }
+    }
+    .lantern-container {
+      position:absolute;
+      top:0;
+      transform-origin: top center;
+      perspective: 500px;
+      animation: sway 5s cubic-bezier(0.45,0.05,0.55,0.95) infinite alternate;
+      pointer-events:auto;
+    }
+    .lantern-container.left   { left:20%; transform:translateX(-50%); }
+    .lantern-container.center { left:50%; transform:translateX(-50%); }
+    .lantern-container.right  { left:80%; transform:translateX(-50%); }
+    .rope {
+      width:2px;
+      height:150px;
+      margin:0 auto;
+      background:linear-gradient(to bottom, #A52A2A, #E9967A);
+      pointer-events:none;
+    }
+    .lantern {
+      cursor:pointer;
+      position: relative;
+      box-shadow: 0 0 25px rgba(255,200,100,0.8), 0 0 60px rgba(255,120,50,0.6);
+      border: none;
+      outline: none;
+      padding: 0;
+      margin: 0;
+      background: none;
+      display: inline-block;
+      width: auto;
+      height: auto;
+      touch-action: manipulation;
+    }
+    .lantern img {
+      display:block;
+      width:100px;
+      height:auto;
+      border:none;
+      margin:0;
+      padding:0;
+      background:none;
+      animation: bounce 3s ease-in-out infinite;
+      -webkit-user-drag: none;
+      user-select: none;
+      pointer-events:none;
+    }
+    @keyframes sway {
+      0%   { transform:rotate(-3deg); }
+      50%  { transform:rotate(2deg); }
+      100% { transform:rotate(-2deg); }
+    }
+    @keyframes bounce {
+      0%,100% { transform:translateY(0); }
+      50% { transform:translateY(5px); }
+    }
+    .hint {
+      position:absolute;
+      bottom:40px;
+      left:50%;
+      transform:translateX(-50%);
+      color: #fff;
+      font-family: "Segoe UI", sans-serif;
+      font-size:18px;
+      opacity:0.8;
+      text-align:center;
+      animation: pulse 2s infinite;
+      display:none;
+      z-index:20;
+      pointer-events:none;
+    }
+    @keyframes pulse {
+      0% { opacity:0.4; }
+      100% { opacity:1; }
+    }
+    .fade-out {
+      position:fixed;
+      inset:0;
+      background:#0d0d1a;
+      opacity:0;
+      transition: opacity 0.6s ease;
+      pointer-events:none;
+      z-index:999;
+    }
+    .center-text {
+      position:absolute;
+      top:60%;
+      left:50%;
+      transform:translate(-50%,-50%);
+      color:#E9967A;
+      font-family: 'Segoe UI', sans-serif;
+      font-size:28px;
+      line-height:1.5;
+      text-align:center;
+      width:90%;
+      max-width:600px;
+      text-shadow:0 0 10px rgba(255,180,80,0.8);
+      z-index:10;
+      pointer-events:none;
+    }
+    .center-text p {
+      opacity:0;
+      position:relative;
+      width:100%;
+      left:0;
+      transition: opacity 0.6s;
+      margin:6px 0;
+    }
+    .arrow-up {
+      position:absolute;
+      bottom:80px;
+      left:50%;
+      transform:translateX(-50%);
+      font-size:40px;
+      color:#ffcc66;
+      text-shadow:0 0 10px rgba(255,200,100,0.8);
+      animation: bounceArrow 1.2s infinite;
+      display:none;
+      z-index:20;
+      pointer-events:none;
+    }
+    @keyframes bounceArrow {
+      0%,100% { transform:translateX(-50%) translateY(0); }
+      50% { transform:translateX(-50%) translateY(-15px); }
+    }
+    @media (max-width:480px){
+      .lantern img { width:80px; }
+      .center-text { font-size:18px; top:65%; }
+      .hint { font-size:16px; bottom:30px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="stars"></div>
+  <div id="fireflies"></div>
+  <div class="center-text" id="textContainer">
+    <p>Trung thu năm nay</p>
+    <p>Tớ có món quà muốn tặng cho Cậu</p>
+    <p>Ở đây có 3 lồng đèn</p>
+    <p>Mỗi khi Cậu nhấn vào 1 lồng đèn sẽ là 1 món quà anh tặng cho Cậu</p>
+  </div>
+  <div class="lantern-container left">
+    <div class="rope"></div>
+    <div class="lantern" data-link="mualongden.html" role="button" aria-label="Lồng đèn 1">
+      <img src="anh/longden1.png" alt="Lồng đèn 1" />
+    </div>
+  </div>
+  <div class="lantern-container center">
+    <div class="rope"></div>
+    <div class="lantern" data-link="phaohoa/index2.html" role="button" aria-label="Lồng đèn 2">
+      <img src="anh/longden2.png" alt="Lồng đèn 2" />
+    </div>
+  </div>
+  <div class="lantern-container right">
+    <div class="rope"></div>
+    <div class="lantern" data-link="banhtrunthu.html" role="button" aria-label="Lồng đèn 3">
+      <img src="anh/longden3.png" alt="Lồng đèn 3" />
+    </div>
+  </div>
+  <div class="arrow-up" id="arrow">⬆</div>
+  <div class="hint" id="hint">Nhấn vào lồng đèn đi</div>
+  <div class="fade-out" id="fade"></div>
+  <script>
+    (function(){
+      const lanterns = document.querySelectorAll(".lantern");
+      const fade = document.getElementById("fade");
+      const arrow = document.getElementById("arrow");
+      const hint = document.getElementById("hint");
+      const texts = document.querySelectorAll(".center-text p");
+      const starContainer = document.getElementById("stars");
+      const fireflyContainer = document.getElementById("fireflies");
+      let textTimer = null;
+      let navTimer = null;
+      let index = 0;
+      function attachTap(el, handler){
+        if(window.PointerEvent){
+          el.addEventListener('pointerup', function onPointer(e){
+            if(e.pointerType === 'mouse' && e.button !== 0) return;
+            handler(e);
+          });
+        } else {
+          el.addEventListener('click', handler);
+        }
+      }
+      function clearTimers(){
+        if(textTimer){ clearTimeout(textTimer); textTimer = null; }
+        if(navTimer){ clearTimeout(navTimer); navTimer = null; }
+      }
+      function createStarsAndFireflies(){
+        starContainer.innerHTML = '';
+        fireflyContainer.innerHTML = '';
+        const numStars = window.innerWidth < 480 ? 40 : 80;
+        const numFireflies = window.innerWidth < 480 ? 6 : 12;
+        for(let i=0;i<numStars;i++){
+          const star=document.createElement("div");
+          star.className="star";
+          star.style.top = (Math.random()*110 - 5) + "vh";
+          star.style.left = (Math.random()*110 - 5) + "vw";
+          star.style.animationDuration = (1+Math.random()*3)+"s";
+          starContainer.appendChild(star);
+        }
+        for(let i=0;i<numFireflies;i++){
+          const fly=document.createElement("div");
+          fly.className="firefly";
+          fly.style.top = (Math.random()*100) + "vh";
+          fly.style.left = (Math.random()*100) + "vw";
+          fly.style.animationDuration = (8+Math.random()*5)+"s";
+          fireflyContainer.appendChild(fly);
+        }
+      }
+      function resetUIState(){
+        fade.style.transition = 'opacity 0.6s ease';
+        fade.style.opacity = '0';
+        fade.style.pointerEvents = 'none';
+        arrow.style.display = 'none';
+        hint.style.display = 'none';
+        texts.forEach(t => {
+          t.style.opacity = 0;
+        });
+        index = 0;
+        clearTimers();
+      }
+      function showTextSequence(){
+        texts.forEach(t => t.style.opacity = 0);
+        function step(){
+          if(index > 0){
+            texts[index-1].style.opacity = 0;
+          }
+          if(index < texts.length){
+            texts[index].style.opacity = 1;
+            index++;
+            textTimer = setTimeout(step, 3000);
+          } else {
+            arrow.style.display = 'block';
+            hint.style.display = 'block';
+          }
+        }
+        textTimer = setTimeout(step, 300);
+      }
+      function addLanternListeners(){
+        lanterns.forEach(lantern => {
+          if(lantern.dataset.listener === '1') return;
+          attachTap(lantern, (ev) => {
+            const targetPage = lantern.getAttribute("data-link");
+            if(!targetPage) return;
+            if(fade.style.opacity === '1') return;
+            fade.style.pointerEvents = 'auto';
+            requestAnimationFrame(()=> { fade.style.opacity = '1'; });
+            navTimer = setTimeout(()=> {
+              window.location.href = targetPage;
+            }, 600);
+          });
+          lantern.dataset.listener = '1';
+        });
+      }
+      function init(){
+        resetUIState();
+        createStarsAndFireflies();
+        addLanternListeners();
+        showTextSequence();
+      }
+      window.addEventListener('load', init);
+      window.addEventListener('pageshow', function(e){
+        init();
+      });
+      document.addEventListener('visibilitychange', function(){
+        if(document.visibilityState === 'visible'){
+          init();
+        } else {
+          clearTimers();
+        }
+      });
+      window.addEventListener('beforeunload', function(){
+        clearTimers();
+      });
+      setTimeout(()=> {
+        if(fade.style.opacity === '1'){
+          fade.style.opacity = '0';
+          fade.style.pointerEvents = 'none';
+        }
+      }, 500);
+    })();
+  </script>
+</body>
+</html>
